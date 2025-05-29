@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'screens/qa_screen.dart';
 import 'screens/daily_case_screen.dart';
+import 'screens/quiz_screen.dart';
+import 'screens/study_screen.dart';
 import 'services/vertex_ai_service.dart';
 import 'providers/legal_providers.dart';
 
@@ -83,9 +85,9 @@ class HomePage extends ConsumerWidget {
 
     final List<Widget> pages = [
       const DailyCaseScreen(),
-      const QuizTabContent(),
+      const QuizScreen(),
       const QAScreen(),
-      const StudyTabContent(),
+      const StudyScreen(),
     ];
 
     return Scaffold(
@@ -129,51 +131,6 @@ class HomePage extends ConsumerWidget {
             selectedIcon: Icon(Icons.school),
             label: '学習',
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// プレースホルダーページ
-class QuizTabContent extends StatelessWidget {
-  const QuizTabContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.quiz, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'クイズ機能',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          Text('面白い判例クイズを実装予定'),
-        ],
-      ),
-    );
-  }
-}
-
-class StudyTabContent extends StatelessWidget {
-  const StudyTabContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.school, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            '学習機能',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          Text('フラッシュカード学習を実装予定'),
         ],
       ),
     );

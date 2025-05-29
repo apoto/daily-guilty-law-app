@@ -76,3 +76,45 @@ Map<String, dynamic> _$GachaResultToJson(GachaResult instance) =>
       'category': instance.category,
       'riskLevel': instance.riskLevel,
     };
+
+QuizQuestion _$QuizQuestionFromJson(Map<String, dynamic> json) => QuizQuestion(
+      id: json['id'] as String,
+      question: json['question'] as String,
+      options:
+          (json['options'] as List<dynamic>).map((e) => e as String).toList(),
+      correctAnswerIndex: (json['correctAnswerIndex'] as num).toInt(),
+      explanation: json['explanation'] as String,
+      category: json['category'] as String,
+      difficulty: (json['difficulty'] as num).toInt(),
+      lawRefs:
+          (json['lawRefs'] as List<dynamic>).map((e) => e as String).toList(),
+    );
+
+Map<String, dynamic> _$QuizQuestionToJson(QuizQuestion instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'question': instance.question,
+      'options': instance.options,
+      'correctAnswerIndex': instance.correctAnswerIndex,
+      'explanation': instance.explanation,
+      'category': instance.category,
+      'difficulty': instance.difficulty,
+      'lawRefs': instance.lawRefs,
+    };
+
+QuizResult _$QuizResultFromJson(Map<String, dynamic> json) => QuizResult(
+      questionId: json['questionId'] as String,
+      selectedAnswerIndex: (json['selectedAnswerIndex'] as num).toInt(),
+      isCorrect: json['isCorrect'] as bool,
+      answeredAt: DateTime.parse(json['answeredAt'] as String),
+      timeSpentSeconds: (json['timeSpentSeconds'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$QuizResultToJson(QuizResult instance) =>
+    <String, dynamic>{
+      'questionId': instance.questionId,
+      'selectedAnswerIndex': instance.selectedAnswerIndex,
+      'isCorrect': instance.isCorrect,
+      'answeredAt': instance.answeredAt.toIso8601String(),
+      'timeSpentSeconds': instance.timeSpentSeconds,
+    };
