@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/qa_screen.dart';
+import 'screens/daily_case_screen.dart';
 import 'services/vertex_ai_service.dart';
+import 'providers/legal_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // 環境変数を読み込み
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
     // 環境変数ファイルが見つからない場合はデフォルト値を使用
-    print('環境変数ファイルが見つかりません。デフォルト設定を使用します。');
+    debugPrint('環境変数ファイルが見つかりません。デフォルト設定を使用します。');
   }
-  
-  runApp(const DailyGuiltyLawApp());
+
+  runApp(const ProviderScope(child: DailyGuiltyLawApp()));
 }
 
 class DailyGuiltyLawApp extends StatelessWidget {
@@ -40,7 +43,7 @@ class DailyGuiltyLawApp extends StatelessWidget {
             color: Colors.white,
           ),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 4,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -57,10 +60,7 @@ class DailyGuiltyLawApp extends StatelessWidget {
             fontWeight: FontWeight.w600,
             color: Color(0xFF1E3A8A),
           ),
-          bodyLarge: TextStyle(
-            fontSize: 16,
-            color: Color(0xFF374151),
-          ),
+          bodyLarge: TextStyle(fontSize: 16, color: Color(0xFF374151)),
         ),
       ),
       home: const HomePage(),
@@ -68,25 +68,20 @@ class DailyGuiltyLawApp extends StatelessWidget {
   }
 }
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedIndex = ref.watch(selectedIndexProvider);
 
-class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
+    final List<Widget> pages = [
+      const DailyCaseScreen(),
+      const QuizTabContent(),
+      const QAScreen(),
+      const StudyTabContent(),
+    ];
 
-  final List<Widget> _pages = [
-    const HomeTabContent(),
-    const QuizTabContent(),
-    const QAScreen(),
-    const StudyTabContent(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Daily Guilty Law'),
@@ -101,13 +96,11 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: _pages[_selectedIndex],
+      body: pages[selectedIndex],
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
+        selectedIndex: selectedIndex,
         onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+          ref.read(selectedIndexProvider.notifier).state = index;
         },
         destinations: const [
           NavigationDestination(
@@ -136,241 +129,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class HomeTabContent extends StatelessWidget {
-  const HomeTabContent({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ウェルカムセクション
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(context).colorScheme.primary,
-                  Theme.of(context).colorScheme.primary.withOpacity(0.8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '今日の面白判例',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '法律を楽しく学ぼう！',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // 今日のクイズへ遷移
-                  },
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('今日のクイズを始める'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Theme.of(context).colorScheme.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // 機能カード
-          Text(
-            '機能一覧',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              Expanded(
-                child: _FeatureCard(
-                  icon: Icons.quiz,
-                  title: '面白判例クイズ',
-                  description: '実際の変わった事件を\nクイズで学習',
-                  color: Colors.orange,
-                  onTap: () {
-                    // クイズ画面へ
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _FeatureCard(
-                  icon: Icons.chat_bubble,
-                  title: 'AI法律相談',
-                  description: '法律の疑問を\nAIに質問',
-                  color: Colors.blue,
-                  onTap: () {
-                    // Q&A画面へ
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          Row(
-            children: [
-              Expanded(
-                child: _FeatureCard(
-                  icon: Icons.school,
-                  title: '学習モード',
-                  description: '法律用語を\n効率的に暗記',
-                  color: Colors.green,
-                  onTap: () {
-                    // 学習画面へ
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _FeatureCard(
-                  icon: Icons.trending_up,
-                  title: '学習履歴',
-                  description: '進捗を確認して\nモチベーション維持',
-                  color: Colors.purple,
-                  onTap: () {
-                    // 履歴画面へ
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // 最近の学習
-          Text(
-            '最近の学習',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 16),
-
-          Card(
-            child: ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Colors.orange,
-                child: Icon(Icons.quiz, color: Colors.white),
-              ),
-              title: const Text('民法クイズ'),
-              subtitle: const Text('昨日 • 正答率 80%'),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                // 学習詳細へ
-              },
-            ),
-          ),
-
-          Card(
-            child: ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Colors.blue,
-                child: Icon(Icons.chat, color: Colors.white),
-              ),
-              title: const Text('契約書について質問'),
-              subtitle: const Text('3日前 • AI回答済み'),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                // 質問詳細へ
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FeatureCard extends StatelessWidget {
-  const _FeatureCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.color,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: color,
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // プレースホルダーページ
 class QuizTabContent extends StatelessWidget {
   const QuizTabContent({super.key});
@@ -381,43 +139,13 @@ class QuizTabContent extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.quiz,
-            size: 64,
-            color: Colors.grey,
-          ),
+          Icon(Icons.quiz, size: 64, color: Colors.grey),
           SizedBox(height: 16),
           Text(
             'クイズ機能',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           Text('面白い判例クイズを実装予定'),
-        ],
-      ),
-    );
-  }
-}
-
-class QAScreen extends StatelessWidget {
-  const QAScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.chat,
-            size: 64,
-            color: Colors.grey,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'AI Q&A機能',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          Text('AI法律相談機能を実装予定'),
         ],
       ),
     );
@@ -433,11 +161,7 @@ class StudyTabContent extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.school,
-            size: 64,
-            color: Colors.grey,
-          ),
+          Icon(Icons.school, size: 64, color: Colors.grey),
           SizedBox(height: 16),
           Text(
             '学習機能',
