@@ -69,7 +69,7 @@ dependencies:
   go_router: ^13.0.1
 
   # Error tracking
-  sentry_flutter: ^7.13.2
+  sentry_flutter: ^8.14.2
 
 dev_dependencies:
   flutter_test:

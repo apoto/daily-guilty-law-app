@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'screens/qa_screen.dart';
 import 'screens/daily_case_screen.dart';
 import 'services/vertex_ai_service.dart';
@@ -17,7 +18,12 @@ Future<void> main() async {
     debugPrint('環境変数ファイルが見つかりません。デフォルト設定を使用します。');
   }
 
-  runApp(const ProviderScope(child: DailyGuiltyLawApp()));
+  // Sentryの初期化
+  await SentryFlutter.init((options) {
+    options.dsn = dotenv.env['SENTRY_DSN'] ?? '';
+    options.environment = dotenv.env['ENVIRONMENT'] ?? 'development';
+    options.debug = dotenv.env['ENVIRONMENT'] != 'production';
+  }, appRunner: () => runApp(const ProviderScope(child: DailyGuiltyLawApp())));
 }
 
 class DailyGuiltyLawApp extends StatelessWidget {
