@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'screens/qa_screen.dart';
+import 'services/vertex_ai_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 環境変数を読み込み
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    // 環境変数ファイルが見つからない場合はデフォルト値を使用
+    print('環境変数ファイルが見つかりません。デフォルト設定を使用します。');
+  }
+  
   runApp(const DailyGuiltyLawApp());
 }
 
@@ -68,7 +81,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     const HomeTabContent(),
     const QuizTabContent(),
-    const QATabContent(),
+    const QAScreen(),
     const StudyTabContent(),
   ];
 
@@ -385,8 +398,8 @@ class QuizTabContent extends StatelessWidget {
   }
 }
 
-class QATabContent extends StatelessWidget {
-  const QATabContent({super.key});
+class QAScreen extends StatelessWidget {
+  const QAScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
