@@ -1,4 +1,8 @@
 PODS:
+  - AppCheckCore (11.2.0):
+    - GoogleUtilities/Environment (~> 8.0)
+    - GoogleUtilities/UserDefaults (~> 8.0)
+    - PromisesObjC (~> 2.4)
   - Firebase/Analytics (11.10.0):
     - Firebase/Core
   - Firebase/Auth (11.10.0):
@@ -15,6 +19,11 @@ PODS:
   - firebase_analytics (11.4.6):
     - Firebase/Analytics (= 11.10.0)
     - firebase_core
+    - Flutter
+  - firebase_app_check (0.3.2-6):
+    - Firebase/CoreOnly (~> 11.10.0)
+    - firebase_core
+    - FirebaseAppCheck (~> 11.10.0)
     - Flutter
   - firebase_auth (5.5.4):
     - Firebase/Auth (= 11.10.0)
@@ -47,6 +56,12 @@ PODS:
     - GoogleUtilities/Network (~> 8.0)
     - "GoogleUtilities/NSData+zlib (~> 8.0)"
     - nanopb (~> 3.30910.0)
+  - FirebaseAppCheck (11.10.0):
+    - AppCheckCore (~> 11.0)
+    - FirebaseAppCheckInterop (~> 11.0)
+    - FirebaseCore (~> 11.10.0)
+    - GoogleUtilities/Environment (~> 8.0)
+    - GoogleUtilities/UserDefaults (~> 8.0)
   - FirebaseAppCheckInterop (11.13.0)
   - FirebaseAuth (11.10.0):
     - FirebaseAppCheckInterop (~> 11.0)
@@ -147,6 +162,7 @@ PODS:
 
 DEPENDENCIES:
   - firebase_analytics (from `.symlinks/plugins/firebase_analytics/ios`)
+  - firebase_app_check (from `.symlinks/plugins/firebase_app_check/ios`)
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
   - firebase_remote_config (from `.symlinks/plugins/firebase_remote_config/ios`)
@@ -156,9 +172,11 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - AppCheckCore
     - Firebase
     - FirebaseABTesting
     - FirebaseAnalytics
+    - FirebaseAppCheck
     - FirebaseAppCheckInterop
     - FirebaseAuth
     - FirebaseAuthInterop
@@ -180,6 +198,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   firebase_analytics:
     :path: ".symlinks/plugins/firebase_analytics/ios"
+  firebase_app_check:
+    :path: ".symlinks/plugins/firebase_app_check/ios"
   firebase_auth:
     :path: ".symlinks/plugins/firebase_auth/ios"
   firebase_core:
@@ -194,13 +214,16 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/sentry_flutter/ios"
 
 SPEC CHECKSUMS:
+  AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
   Firebase: 1fe1c0a7d9aaea32efe01fbea5f0ebd8d70e53a2
   firebase_analytics: 943aa4699bf6afe056a96991ba8ee34776323d4c
+  firebase_app_check: a3fad167381a08d4e9534da64429c9b648e51f24
   firebase_auth: 519455ee22dea9cb8b4e05d7821f93f77db88882
   firebase_core: 3c2f323cae65c97a636a05a23b17730ef93df2cf
   firebase_remote_config: 6dc3e79fe219c24f1393faf91463559bf3784fd4
   FirebaseABTesting: dfc10eb6cc08fe3b391ac9e5aa40396d43ea6675
   FirebaseAnalytics: 4e42333f02cf78ed93703a5c36f36dd518aebdef
+  FirebaseAppCheck: 9687ebd909702469bc09d2d58008697b83f4ac27
   FirebaseAppCheckInterop: 72066489c209823649a997132bcd9269bc33a4bb
   FirebaseAuth: c4146bdfdc87329f9962babd24dae89373f49a32
   FirebaseAuthInterop: 4fa327ec3c551a80a6929561f83af80b1dd44937

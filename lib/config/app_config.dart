@@ -1,9 +1,14 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConfig {
-  static String get projectId => dotenv.env['GOOGLE_CLOUD_PROJECT_ID'] ?? '';
+  // Google Cloud設定
+  static const String defaultProjectId = 'daily-guilty-law-dev';
+  static const String defaultRegion = 'asia-northeast1';
+
+  static String get projectId =>
+      dotenv.env['GOOGLE_CLOUD_PROJECT_ID'] ?? defaultProjectId;
   static String get region =>
-      dotenv.env['GOOGLE_CLOUD_REGION'] ?? 'asia-northeast1';
+      dotenv.env['GOOGLE_CLOUD_REGION'] ?? defaultRegion;
   static String get vertexAiEndpoint => dotenv.env['VERTEX_AI_ENDPOINT'] ?? '';
   static String get agentEngineEndpoint =>
       dotenv.env['AGENT_ENGINE_ENDPOINT'] ?? '';

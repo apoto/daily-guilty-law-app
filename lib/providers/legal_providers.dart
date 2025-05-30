@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/daily_case.dart';
-import '../services/legal_api_service.dart';
+import '../models/news_comparison.dart';
+import '../models/gacha_result.dart';
+import '../services/vertex_ai_service.dart';
 
 // Dio provider
 final dioProvider = Provider<Dio>((ref) {
@@ -11,10 +13,9 @@ final dioProvider = Provider<Dio>((ref) {
   return dio;
 });
 
-// API service provider
-final legalApiServiceProvider = Provider<LegalApiService>((ref) {
-  final dio = ref.watch(dioProvider);
-  return LegalApiService(dio);
+// Vertex AI サービスプロバイダー
+final vertexAIServiceProvider = Provider<VertexAIService>((ref) {
+  return VertexAIService();
 });
 
 // Mock data for development
@@ -44,38 +45,27 @@ final mockDailyCase = DailyCase(
 
 // Daily case provider with mock data fallback
 final dailyCaseProvider = FutureProvider<DailyCase>((ref) async {
-  try {
-    final apiService = ref.watch(legalApiServiceProvider);
-    return await apiService.getDailyCase();
-  } catch (e) {
-    // API接続に失敗した場合はモックデータを返す
-    await Future.delayed(const Duration(seconds: 1)); // リアルなローディング時間をシミュレート
-    return mockDailyCase;
-  }
+  final vertexAIService = ref.read(vertexAIServiceProvider);
+  return await vertexAIService.generateDailyCase();
 });
 
 // News comparisons provider with mock data fallback
 final newsComparisonsProvider = FutureProvider<List<NewsComparison>>((
   ref,
 ) async {
-  try {
-    final apiService = ref.watch(legalApiServiceProvider);
-    return await apiService.getNewsComparisons();
-  } catch (e) {
-    // API接続に失敗した場合はモックデータを返す
-    await Future.delayed(const Duration(seconds: 1));
-    return [
-      NewsComparison(
-        newsTitle: '自動運転車の事故、責任の所在は？',
-        newsUrl: 'https://example.com/news/1',
-        newsSummary: '自動運転車による交通事故が発生。運転者と製造者の責任について議論が活発化。',
-        matchedCase: mockDailyCase,
-        similarityScore: 0.75,
-        verdict: '製造物責任と運転者責任の複合的判断が必要',
-        explanation: '自動運転技術の発展に伴い、従来の交通事故とは異なる法的判断が求められています。',
-      ),
-    ];
-  }
+  // モックデータを返す
+  await Future.delayed(const Duration(seconds: 1));
+  return [
+    NewsComparison(
+      newsTitle: '自動運転車の事故、責任の所在は？',
+      newsUrl: 'https://example.com/news/1',
+      newsSummary: '自動運転車による交通事故が発生。運転者と製造者の責任について議論が活発化。',
+      matchedCase: mockDailyCase,
+      similarityScore: 0.75,
+      verdict: '製造物責任と運転者責任の複合的判断が必要',
+      explanation: '自動運転技術の発展に伴い、従来の交通事故とは異なる法的判断が求められています。',
+    ),
+  ];
 });
 
 // Gacha result provider with mock data fallback
@@ -83,23 +73,43 @@ final gachaResultProvider = FutureProvider.family<GachaResult, String>((
   ref,
   query,
 ) async {
-  try {
-    final apiService = ref.watch(legalApiServiceProvider);
-    return await apiService.getGachaResult({'query': query});
-  } catch (e) {
-    // API接続に失敗した場合はモックデータを返す
-    await Future.delayed(const Duration(seconds: 2));
-    return GachaResult(
-      score: 65,
-      verdictPhrase: 'ひとことで言えば...グレーゾーンです！',
-      detail:
-          'あなたの質問「$query」について分析した結果、法的にはグレーゾーンの可能性があります。詳細な状況により判断が分かれるケースです。',
-      refs: ['民法第709条', '刑法第○○条'],
-      category: '民事・刑事複合',
-      riskLevel: 'グレー',
-    );
-  }
+  // モックデータを返す
+  await Future.delayed(const Duration(seconds: 2));
+  return GachaResult(
+    score: 65,
+    verdictPhrase: 'ひとことで言えば...グレーゾーンです！',
+    detail:
+        'あなたの質問「$query」について分析した結果、法的にはグレーゾーンの可能性があります。詳細な状況により判断が分かれるケースです。',
+    refs: ['民法第709条', '刑法第○○条'],
+    category: '民事・刑事複合',
+    riskLevel: 'グレー',
+  );
 });
 
 // Selected index for bottom navigation
 final selectedIndexProvider = StateProvider<int>((ref) => 0);
+
+// Q&A 応答プロバイダー
+final qaResponseProvider = FutureProvider.family<GachaResult, String>((
+  ref,
+  question,
+) async {
+  final vertexAIService = ref.read(vertexAIServiceProvider);
+  return await vertexAIService.generateQAResponse(question);
+});
+
+// ニュース比較プロバイダー
+final newsComparisonProvider =
+    FutureProvider.family<NewsComparison, Map<String, String>>((
+      ref,
+      params,
+    ) async {
+      final vertexAIService = ref.read(vertexAIServiceProvider);
+      return await vertexAIService.compareWithNews(
+        params['title'] ?? '',
+        params['summary'] ?? '',
+      );
+    });
+
+// ローディング状態管理
+final isLoadingProvider = StateProvider<bool>((ref) => false);

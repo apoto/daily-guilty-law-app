@@ -1,258 +1,296 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../models/ai_response.dart';
+import 'package:firebase_vertexai/firebase_vertexai.dart';
+import '../models/daily_case.dart';
+import '../config/app_config.dart';
+import '../models/news_comparison.dart';
+import '../models/gacha_result.dart';
+import '../models/quiz_question.dart';
+import '../models/study_card.dart';
 
 class VertexAIService {
-  static const String _baseUrl = 'https://asia-northeast1-aiplatform.googleapis.com';
-  
-  // 開発用のアクセストークン（本番では適切な認証を実装）
-  String? _accessToken;
-  
-  String get projectId => dotenv.env['GOOGLE_CLOUD_PROJECT_ID'] ?? 'daily-guilty-law';
-  String get location => dotenv.env['VERTEX_AI_LOCATION'] ?? 'asia-northeast1';
-  String get model => dotenv.env['VERTEX_AI_MODEL'] ?? 'gemini-1.5-pro';
+  static const bool _isVertexAIEnabled = true; // Vertex AI APIを有効化
 
-  /// 法律相談AI - ユーザーの質問に回答
-  Future<AIResponse> askLegalQuestion(String question) async {
-    try {
-      final prompt = '''
-あなたは日本の法律に精通した親しみやすい法律アドバイザーです。
-一般の方にもわかりやすく、正確で実用的な法律情報を提供してください。
+  late final GenerativeModel _model;
 
-ユーザーの質問: $question
-
-以下の形式で回答してください：
-1. 簡潔な結論
-2. 法的根拠（該当する法律・条文）
-3. 具体例があれば紹介
-4. 注意点や補足事項
-5. より詳しく知りたい場合の推奨行動
-
-※免責事項：この回答は一般的な情報提供であり、個別の法的アドバイスではありません。
-具体的なケースについては弁護士にご相談ください。
-''';
-
-      return await _generateContent(prompt);
-    } catch (e) {
-      return AIResponse.error('法律相談の処理中にエラーが発生しました: $e');
+  VertexAIService() {
+    if (_isVertexAIEnabled) {
+      _model = FirebaseVertexAI.instance.generativeModel(
+        model: 'gemini-1.5-flash',
+        safetySettings: [
+          SafetySetting(
+            HarmCategory.harassment,
+            HarmBlockThreshold.medium,
+            null,
+          ),
+          SafetySetting(
+            HarmCategory.hateSpeech,
+            HarmBlockThreshold.medium,
+            null,
+          ),
+          SafetySetting(
+            HarmCategory.sexuallyExplicit,
+            HarmBlockThreshold.medium,
+            null,
+          ),
+          SafetySetting(
+            HarmCategory.dangerousContent,
+            HarmBlockThreshold.medium,
+            null,
+          ),
+        ],
+      );
     }
   }
 
-  /// 判例クイズ生成 - 面白い判例を基にしたクイズを作成
-  Future<QuizQuestion> generateQuizQuestion({String? category}) async {
+  /// Daily Case生成
+  Future<DailyCase> generateDailyCase() async {
+    // Vertex AI APIが無効の場合はモックデータを返す
+    if (!_isVertexAIEnabled) {
+      debugPrint('Vertex AI API無効: モックデータを使用');
+      return _getMockDailyCase();
+    }
+
     try {
       final prompt = '''
-日本の面白い・珍しい判例を基にしたクイズを1問作成してください。
-${category != null ? 'カテゴリ: $category' : ''}
+あなたは法律教育の専門家です。一般の人が興味を持ちやすい実際の判例を基に、Daily Guilty Lawアプリ用のコンテンツを作成してください。
 
-以下のJSON形式で回答してください：
+要件:
+1. 実際の判例を基にした内容
+2. 一般の人が理解しやすい表現
+3. 興味深く、話題性のある事例
+4. 法的な正確性を保持
+
+以下のJSON形式で回答してください:
 {
-  "id": "unique_id",
-  "question": "クイズの問題文",
-  "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4"],
-  "correctAnswer": 0,
-  "explanation": "詳しい解説（判例の背景、法的ポイント、なぜ面白いのか）",
-  "category": "分野（民法、刑法、商法など）",
-  "difficulty": "初級|中級|上級"
+  "title": "判例のタイトル",
+  "question": "事案の概要（問題提起）",
+  "answerShort": "結論（一言で表現）",
+  "answerLong": "詳細な解説",
+  "interestScore": 85,
+  "tags": ["民法", "不法行為", "損害賠償"],
+  "lawRefs": ["民法第709条", "民法第710条"],
+  "court": "最高裁判所",
+  "year": "2023"
+}
+''';
+
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final responseText = response.text;
+
+      if (responseText == null) {
+        throw Exception('AIからの応答が空です');
+      }
+
+      final jsonData = _extractJsonFromResponse(responseText);
+
+      return DailyCase(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: jsonData['title'] ?? 'タイトル不明',
+        question: jsonData['question'] ?? '',
+        answerShort: jsonData['answerShort'] ?? '',
+        answerLong: jsonData['answerLong'] ?? '',
+        interestScore: jsonData['interestScore'] ?? 50,
+        tags: List<String>.from(jsonData['tags'] ?? []),
+        lawRefs: List<String>.from(jsonData['lawRefs'] ?? []),
+        court: jsonData['court'] ?? '不明',
+        year: jsonData['year'] ?? '不明',
+        createdAt: DateTime.now(),
+      );
+    } catch (e) {
+      debugPrint('Daily Case生成エラー: $e');
+      // フォールバック: モックデータを返す
+      return _getMockDailyCase();
+    }
+  }
+
+  /// Q&A応答生成
+  Future<GachaResult> generateQAResponse(String question) async {
+    // Vertex AI APIが無効の場合はモックデータを返す
+    if (!_isVertexAIEnabled) {
+      debugPrint('Vertex AI API無効: モックデータを使用');
+      return _getMockGachaResult(question);
+    }
+
+    try {
+      final prompt =
+          '''
+あなたは法律の専門家です。以下の質問に対して、法的リスクを評価し、わかりやすく回答してください。
+
+質問: $question
+
+以下のJSON形式で回答してください:
+{
+  "score": 75,
+  "verdictPhrase": "ひとことで言えば...",
+  "detail": "詳細な法的解説",
+  "refs": ["関連する法律条文"],
+  "category": "民法",
+  "riskLevel": "グレー"
 }
 
-要件：
-- 実際の判例に基づく
-- 興味深い事実関係
-- 法的に勉強になる
-- 4択で明確に正解が判断できる
-- 解説は初心者にもわかりやすく
+riskLevelは以下から選択:
+- "OK": 法的問題なし
+- "グレー": 注意が必要
+- "OUT": 法的リスクが高い
 ''';
 
-      final response = await _generateContent(prompt);
-      if (response.hasError) {
-        throw Exception(response.error);
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final responseText = response.text;
+
+      if (responseText == null) {
+        throw Exception('AIからの応答が空です');
       }
 
-      // JSONパースを試行
-      try {
-        final jsonData = json.decode(response.content);
-        return QuizQuestion.fromJson(jsonData);
-      } catch (e) {
-        // JSONパースに失敗した場合、デフォルトクイズを返す
-        return _getDefaultQuizQuestion();
-      }
+      final jsonData = _extractJsonFromResponse(responseText);
+
+      return GachaResult(
+        score: jsonData['score'] ?? 50,
+        verdictPhrase: jsonData['verdictPhrase'] ?? 'ひとことで言えば...',
+        detail: jsonData['detail'] ?? '',
+        refs: List<String>.from(jsonData['refs'] ?? []),
+        category: jsonData['category'] ?? '一般',
+        riskLevel: jsonData['riskLevel'] ?? 'グレー',
+      );
     } catch (e) {
-      // エラー時はデフォルトクイズを返す
-      return _getDefaultQuizQuestion();
+      debugPrint('Q&A応答生成エラー: $e');
+      // フォールバック: デフォルト応答を返す
+      return _getMockGachaResult(question);
     }
   }
 
-  /// 今日の判例解説を取得
-  Future<AIResponse> getTodaysCaseAnalysis() async {
+  /// ニュース比較分析
+  Future<NewsComparison> compareWithNews(
+    String newsTitle,
+    String newsSummary,
+  ) async {
     try {
-      final prompt = '''
-今日紹介する面白い日本の判例を1つ選んで、以下の形式で解説してください：
+      final prompt =
+          '''
+以下のニュースと類似する過去の判例を分析し、比較してください。
 
-## 📖 今日の面白判例
+ニュース: $newsTitle
+概要: $newsSummary
 
-**事件名**: [事件名]
-**裁判所**: [裁判所名]
-**年代**: [判決年]
-
-### 🎭 事件の概要
-[わかりやすく事実関係を説明]
-
-### ⚖️ 争点
-[何が法的に問題となったか]
-
-### 📋 判決内容
-[裁判所の判断]
-
-### 💡 なぜ面白いのか
-[この判例の興味深いポイント]
-
-### 📚 学べること
-[この判例から学べる法的知識]
-
-要件：
-- 実在する判例
-- 一般の人が興味を持ちそうな事案
-- 法的に学習価値がある
-- わかりやすい文章
-- 専門用語は説明を付ける
+類似する判例を見つけて、以下のJSON形式で回答してください:
+{
+  "newsTitle": "$newsTitle",
+  "newsUrl": "",
+  "newsSummary": "$newsSummary",
+  "matchedCase": {
+    "title": "類似判例のタイトル",
+    "court": "裁判所名",
+    "year": "年度",
+    "answerShort": "判決の要旨"
+  },
+  "similarityScore": 0.85,
+  "verdict": "類似性の評価",
+  "explanation": "詳細な比較分析"
+}
 ''';
 
-      return await _generateContent(prompt);
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final responseText = response.text;
+
+      if (responseText == null) {
+        throw Exception('AIからの応答が空です');
+      }
+
+      final jsonData = _extractJsonFromResponse(responseText);
+
+      // matchedCaseを適切に変換
+      final matchedCaseData = jsonData['matchedCase'] as Map<String, dynamic>;
+      final matchedCase = DailyCase(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: matchedCaseData['title'] ?? '',
+        question: '',
+        answerShort: matchedCaseData['answerShort'] ?? '',
+        answerLong: '',
+        interestScore: 70,
+        tags: [],
+        lawRefs: [],
+        court: matchedCaseData['court'] ?? '',
+        year: matchedCaseData['year'] ?? '',
+        createdAt: DateTime.now(),
+      );
+
+      return NewsComparison(
+        newsTitle: jsonData['newsTitle'] ?? newsTitle,
+        newsUrl: jsonData['newsUrl'] ?? '',
+        newsSummary: jsonData['newsSummary'] ?? newsSummary,
+        matchedCase: matchedCase,
+        similarityScore: (jsonData['similarityScore'] ?? 0.5).toDouble(),
+        verdict: jsonData['verdict'] ?? '',
+        explanation: jsonData['explanation'] ?? '',
+      );
     } catch (e) {
-      return AIResponse.error('今日の判例取得中にエラーが発生しました: $e');
+      debugPrint('ニュース比較エラー: $e');
+      // フォールバック: モックデータを返す
+      return _getMockNewsComparison(newsTitle, newsSummary);
     }
   }
 
-  /// 共通のコンテンツ生成メソッド
-  Future<AIResponse> _generateContent(String prompt) async {
+  /// レスポンスからJSONを抽出
+  Map<String, dynamic> _extractJsonFromResponse(String response) {
     try {
-      // 開発段階ではモックレスポンスを返す
-      if (dotenv.env['DEBUG_MODE'] == 'true') {
-        return _getMockResponse(prompt);
+      // JSONブロックを探す
+      final jsonStart = response.indexOf('{');
+      final jsonEnd = response.lastIndexOf('}') + 1;
+
+      if (jsonStart != -1 && jsonEnd > jsonStart) {
+        final jsonString = response.substring(jsonStart, jsonEnd);
+        return json.decode(jsonString);
       }
 
-      // 実際のVertex AI APIコール（認証が必要）
-      final url = '$_baseUrl/v1/projects/$projectId/locations/$location/publishers/google/models/$model:generateContent';
-      
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer $_accessToken',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'contents': [{
-            'parts': [{'text': prompt}]
-          }],
-          'generationConfig': {
-            'temperature': 0.7,
-            'topP': 0.8,
-            'topK': 40,
-            'maxOutputTokens': 2048,
-          }
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final content = data['candidates'][0]['content']['parts'][0]['text'];
-        return AIResponse(content: content);
-      } else {
-        return AIResponse.error('API呼び出しエラー: ${response.statusCode}');
-      }
+      // JSONが見つからない場合は全体をパース試行
+      return json.decode(response);
     } catch (e) {
-      return AIResponse.error('通信エラー: $e');
+      debugPrint('JSON解析エラー: $e');
+      debugPrint('レスポンス: $response');
+      throw Exception('AIレスポンスの解析に失敗しました');
     }
   }
 
-  /// 開発用モックレスポンス
-  AIResponse _getMockResponse(String prompt) {
-    if (prompt.contains('法律相談')) {
-      return const AIResponse(
-        content: '''## 📋 法的見解
-
-**結論**: ご質問の件について、以下のように考えられます。
-
-**法的根拠**: 
-- 民法第○○条
-- ○○法第○○条
-
-**具体例**: 
-類似のケースでは...
-
-**注意点**: 
-個別の事情により判断が変わる可能性があります。
-
-**推奨行動**: 
-詳細については弁護士にご相談されることをお勧めします。
-
-※この回答は一般的な情報提供であり、個別の法的アドバイスではありません。''',
-        confidence: 0.85,
-      );
-    }
-
-    if (prompt.contains('今日の判例')) {
-      return const AIResponse(
-        content: '''## 📖 今日の面白判例
-
-**事件名**: ペット火葬業者と飼い主の契約紛争事件
-**裁判所**: 東京地方裁判所
-**年代**: 2018年
-
-### 🎭 事件の概要
-ペットの火葬を依頼した飼い主が、返骨されたお骨が自分のペットではないのではないかと疑い、DNA鑑定を求めて訴訟を起こした事件。
-
-### ⚖️ 争点
-- 火葬業者の説明義務の範囲
-- ペットの死体の取り違えの立証責任
-- 慰謝料の算定方法
-
-### 📋 判決内容
-裁判所は火葬業者の説明不足を認定し、一部の慰謝料支払いを命じました。
-
-### 💡 なぜ面白いのか
-ペットの法的地位や、物として扱われる中での感情的価値をどう評価するかという現代的な問題を扱っている点。
-
-### 📚 学べること
-契約における説明義務の重要性と、新しい社会問題に対する法的対応について学べます。''',
-        confidence: 0.90,
-      );
-    }
-
-    return const AIResponse(
-      content: 'モック応答: AIサービスが正常に動作しています。',
-      confidence: 0.95,
+  /// モックデータ（フォールバック用）
+  DailyCase _getMockDailyCase() {
+    return DailyCase(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: '隣人の猫による庭荒らし事件',
+      question: '隣人の飼い猫が毎日庭に入ってきて糞をしていく場合、法的にはどのような対応が可能でしょうか？',
+      answerShort: 'ひとことで言えば、民法上の不法行為として損害賠償請求が可能です',
+      answerLong:
+          '隣人の猫による継続的な庭荒らしは、民法709条の不法行為に該当する可能性があります。飼い主には動物の適切な管理義務があり、これを怠った場合は損害賠償責任を負います。ただし、具体的な損害の立証と、飼い主の過失の証明が必要となります。',
+      interestScore: 78,
+      tags: ['民法', '不法行為', '動物', '近隣トラブル'],
+      lawRefs: ['民法第709条（不法行為による損害賠償）', '民法第718条（動物の占有者等の責任）'],
+      court: '東京地方裁判所',
+      year: '2023',
+      createdAt: DateTime.now(),
     );
   }
 
-  /// デフォルトクイズ問題
-  QuizQuestion _getDefaultQuizQuestion() {
-    return QuizQuestion(
-      id: 'default_001',
-      question: '日本で「ポケモン商標権侵害事件」として有名になった判例で、任天堂が勝訴した理由は？',
-      options: [
-        '商標権の先願主義により任天堂が先に商標登録していたため',
-        'ポケモンのキャラクターデザインが著作権で保護されていたため', 
-        '不正競争防止法違反が認められたため',
-        'すべて正しい'
-      ],
-      correctAnswer: 3,
-      explanation: '''この事件では複数の法的保護が働きました：
-1. 商標権：「ポケットモンスター」の商標権
-2. 著作権：キャラクターデザインの著作権  
-3. 不正競争防止法：周知表示混同惹起行為
-
-知的財産権は重層的に保護されており、一つの商品に複数の権利が適用されることがよくあります。''',
-      category: '知的財産法',
-      difficulty: '中級',
+  GachaResult _getMockGachaResult(String question) {
+    return GachaResult(
+      score: 65,
+      verdictPhrase: 'ひとことで言えば、注意が必要な状況です',
+      detail: 'ご質問の内容について法的な検討が必要です。具体的な状況により判断が分かれる可能性があります。',
+      refs: ['関連する法律条文を確認中'],
+      category: '一般',
+      riskLevel: 'グレー',
     );
   }
 
-  /// アクセストークンを設定（開発用）
-  void setAccessToken(String token) {
-    _accessToken = token;
+  NewsComparison _getMockNewsComparison(String newsTitle, String newsSummary) {
+    final mockCase = _getMockDailyCase();
+    return NewsComparison(
+      newsTitle: newsTitle,
+      newsUrl: '',
+      newsSummary: newsSummary,
+      matchedCase: mockCase,
+      similarityScore: 0.7,
+      verdict: '類似する判例が見つかりました',
+      explanation: '提供されたニュースと類似する過去の判例を分析中です。',
+    );
   }
-} 
+}

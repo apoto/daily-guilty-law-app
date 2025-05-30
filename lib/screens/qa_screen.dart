@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/daily_case.dart';
+import '../models/gacha_result.dart';
 import '../providers/legal_providers.dart';
 
 class QAScreen extends ConsumerStatefulWidget {
@@ -12,6 +14,9 @@ class QAScreen extends ConsumerStatefulWidget {
 class _QAScreenState extends ConsumerState<QAScreen> {
   final TextEditingController _questionController = TextEditingController();
   String? _currentQuery;
+  GachaResult? _result;
+  String? _error;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -19,13 +24,31 @@ class _QAScreenState extends ConsumerState<QAScreen> {
     super.dispose();
   }
 
-  void _submitQuestion() {
+  void _submitQuestion() async {
+    if (_questionController.text.trim().isEmpty) return;
+
     final question = _questionController.text.trim();
-    if (question.isNotEmpty) {
+
+    setState(() {
+      _isLoading = true;
+      _result = null;
+      _error = null;
+    });
+
+    try {
+      // Vertex AI APIを使用して回答を生成
+      final vertexAIService = ref.read(vertexAIServiceProvider);
+      final result = await vertexAIService.generateQAResponse(question);
+
       setState(() {
-        _currentQuery = question;
+        _result = result;
+        _isLoading = false;
       });
-      _questionController.clear();
+    } catch (e) {
+      setState(() {
+        _error = 'エラーが発生しました: $e';
+        _isLoading = false;
+      });
     }
   }
 
@@ -123,7 +146,7 @@ class _QAScreenState extends ConsumerState<QAScreen> {
                   const SizedBox(height: 16),
 
                   // Answer section
-                  if (_currentQuery != null) ...[
+                  if (_result != null) ...[
                     Expanded(
                       child: Card(
                         child: Padding(
@@ -222,10 +245,35 @@ class _QAScreenState extends ConsumerState<QAScreen> {
   }
 
   Widget _buildAnswerContent() {
-    final gachaResultAsync = ref.watch(gachaResultProvider(_currentQuery!));
-
-    return gachaResultAsync.when(
-      data: (result) => SingleChildScrollView(
+    if (_isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('AIが回答を生成中...'),
+          ],
+        ),
+      );
+    } else if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(_error!),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => _submitQuestion(),
+              child: const Text('再試行'),
+            ),
+          ],
+        ),
+      );
+    } else if (_result != null) {
+      return SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -233,16 +281,16 @@ class _QAScreenState extends ConsumerState<QAScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _getRiskColor(result.riskLevel).withOpacity(0.2),
+                color: _getRiskColor(_result!).withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _getRiskColor(result.riskLevel).withOpacity(0.5),
+                  color: _getRiskColor(_result!).withOpacity(0.5),
                 ),
               ),
               child: Text(
-                'リスクレベル: ${result.riskLevel}',
+                'リスクレベル: ${_result!.riskLevel}',
                 style: TextStyle(
-                  color: _getRiskColor(result.riskLevel),
+                  color: _getRiskColor(_result!),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -255,16 +303,14 @@ class _QAScreenState extends ConsumerState<QAScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                result.verdictPhrase,
+                _result!.verdictPhrase,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
               ),
             ),
@@ -272,20 +318,20 @@ class _QAScreenState extends ConsumerState<QAScreen> {
             const SizedBox(height: 16),
 
             // Detail
-            Text(result.detail, style: Theme.of(context).textTheme.bodyLarge),
+            Text(_result!.detail, style: Theme.of(context).textTheme.bodyLarge),
 
             const SizedBox(height: 16),
 
-            // References
-            if (result.refs.isNotEmpty) ...[
+            // Legal references
+            if (_result!.refs.isNotEmpty) ...[
               Text(
-                '関連法令',
+                '関連条文',
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              ...result.refs.map(
+              ..._result!.refs.map(
                 (ref) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
@@ -296,36 +342,31 @@ class _QAScreenState extends ConsumerState<QAScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
             ],
-          ],
-        ),
-      ),
-      loading: () => const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('AIが回答を生成中...'),
-          ],
-        ),
-      ),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text('エラーが発生しました: $error'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => ref.refresh(gachaResultProvider(_currentQuery!)),
-              child: const Text('再試行'),
+
+            // Legal disclaimer
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: Text(
+                '※本情報は一般的解説です。個別相談は弁護士へご相談ください。',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.orange[800]),
+              ),
             ),
           ],
         ),
-      ),
-    );
+      );
+    } else {
+      return const Center(child: Text('質問を入力してください'));
+    }
   }
 
   Widget _buildSampleQuestion(String title, String question, IconData icon) {
@@ -343,8 +384,8 @@ class _QAScreenState extends ConsumerState<QAScreen> {
     );
   }
 
-  Color _getRiskColor(String riskLevel) {
-    switch (riskLevel) {
+  Color _getRiskColor(GachaResult result) {
+    switch (result.riskLevel) {
       case 'OK':
         return Colors.green;
       case 'グレー':

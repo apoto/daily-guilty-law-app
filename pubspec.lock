@@ -270,6 +270,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.1"
+  firebase_ai:
+    dependency: transitive
+    description:
+      name: firebase_ai
+      sha256: "178bdce7248e9ad5a483c3623453d3219443d203b4a5d347b0400580fff2fd6d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.0"
   firebase_analytics:
     dependency: "direct main"
     description:
@@ -294,6 +302,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.5.10+12"
+  firebase_app_check:
+    dependency: transitive
+    description:
+      name: firebase_app_check
+      sha256: a1a5255b8d19e22f2d7e9ff1a1138268cd74d2c12b31dcb487612a371d7a21e9
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.2+6"
+  firebase_app_check_platform_interface:
+    dependency: transitive
+    description:
+      name: firebase_app_check_platform_interface
+      sha256: "26c0eca776d5d5ffb727435b71243a00e74000bd2760792921999b04564aaf59"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.1+6"
+  firebase_app_check_web:
+    dependency: transitive
+    description:
+      name: firebase_app_check_web
+      sha256: "889838c053f024572ba8077cb5a380ff8b224827090a1e5878f004290303ae0e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0+10"
   firebase_auth:
     dependency: "direct main"
     description:
@@ -366,6 +398,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.8.4"
+  firebase_vertexai:
+    dependency: "direct main"
+    description:
+      name: firebase_vertexai
+      sha256: "2bc4fba827f2648765b099e307b34da55fd4cb3c313ac59aafbed259447db4a2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.7.0"
   fixnum:
     dependency: transitive
     description:
@@ -445,22 +485,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "13.2.5"
-  google_identity_services_web:
-    dependency: transitive
-    description:
-      name: google_identity_services_web
-      sha256: "5d187c46dc59e02646e10fe82665fc3884a9b71bc1c90c2b8b749316d33ee454"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.3+1"
-  googleapis_auth:
-    dependency: "direct main"
-    description:
-      name: googleapis_auth
-      sha256: befd71383a955535060acde8792e7efc11d2fccd03dd1d3ec434e85b68775938
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.6.0"
   graphs:
     dependency: transitive
     description:

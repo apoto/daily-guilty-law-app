@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'firebase_options.dart';
 import 'screens/qa_screen.dart';
 import 'screens/daily_case_screen.dart';
 import 'screens/quiz_screen.dart';
@@ -11,6 +13,9 @@ import 'providers/legal_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Firebase初期化
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // 環境変数を読み込み
   try {

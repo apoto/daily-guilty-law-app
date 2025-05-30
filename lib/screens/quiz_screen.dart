@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/daily_case.dart';
+import '../models/quiz_question.dart';
+import '../models/quiz_result.dart';
 import '../providers/legal_providers.dart';
 
 class QuizScreen extends ConsumerStatefulWidget {
@@ -23,34 +25,31 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       id: 'q1',
       question: '隣人の猫が毎日自分の庭に入ってきて糞をしていく場合、法的にはどのような対応が可能でしょうか？',
       options: ['猫を捕獲して保健所に連れて行く', '隣人に対して損害賠償を請求する', '猫に直接危害を加える', '何もできない'],
-      correctAnswerIndex: 1,
+      correctAnswer: 1,
       explanation:
           '民法709条の不法行為に基づき、隣人に対して損害賠償を請求することが可能です。ただし、猫の飼い主としての注意義務違反を立証する必要があります。',
       category: '民法',
-      difficulty: 3,
-      lawRefs: ['民法第709条（不法行為による損害賠償）'],
+      difficulty: '3',
     ),
     QuizQuestion(
       id: 'q2',
       question: 'SNSで他人の悪口を書き込んだ場合、どのような法的責任を負う可能性がありますか？',
       options: ['名誉毀損罪のみ', '侮辱罪のみ', '名誉毀損罪または侮辱罪', '法的責任はない'],
-      correctAnswerIndex: 2,
+      correctAnswer: 2,
       explanation:
           '具体的事実を摘示した場合は名誉毀損罪（刑法230条）、抽象的な悪口の場合は侮辱罪（刑法231条）に該当する可能性があります。',
       category: '刑法',
-      difficulty: 2,
-      lawRefs: ['刑法第230条（名誉毀損）', '刑法第231条（侮辱）'],
+      difficulty: '2',
     ),
     QuizQuestion(
       id: 'q3',
       question: '会社員が副業を理由に解雇された場合、この解雇は有効でしょうか？',
       options: ['常に有効', '常に無効', '就業規則や副業の内容による', '労働基準監督署の判断による'],
-      correctAnswerIndex: 2,
+      correctAnswer: 2,
       explanation:
           '副業を理由とする解雇は、就業規則での禁止規定の有無、副業が本業に与える影響、競業避止義務違反の有無などを総合的に判断して決まります。',
       category: '労働法',
-      difficulty: 4,
-      lawRefs: ['労働契約法第16条（解雇）'],
+      difficulty: '4',
     ),
   ];
 
@@ -70,7 +69,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     if (selectedAnswerIndex == null) return;
 
     final question = mockQuestions[currentQuestionIndex];
-    final isCorrect = selectedAnswerIndex == question.correctAnswerIndex;
+    final isCorrect = selectedAnswerIndex == question.correctAnswer;
     final timeSpent = DateTime.now().difference(questionStartTime!).inSeconds;
 
     final result = QuizResult(
@@ -202,7 +201,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   const Text('難易度: '),
                   ...List.generate(5, (index) {
                     return Icon(
-                      index < question.difficulty
+                      index < int.parse(question.difficulty)
                           ? Icons.star
                           : Icons.star_border,
                       color: Colors.amber,
@@ -234,7 +233,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                         final index = entry.key;
                         final option = entry.value;
                         final isSelected = selectedAnswerIndex == index;
-                        final isCorrect = index == question.correctAnswerIndex;
+                        final isCorrect = index == question.correctAnswer;
 
                         Color? backgroundColor;
                         Color? borderColor;
@@ -336,24 +335,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                 question.explanation,
                                 style: theme.textTheme.bodyMedium,
                               ),
-                              if (question.lawRefs.isNotEmpty) ...[
-                                const SizedBox(height: 12),
-                                Text(
-                                  '関連条文',
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                ...question.lawRefs.map(
-                                  (ref) => Text(
-                                    '• $ref',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.primary,
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ),
